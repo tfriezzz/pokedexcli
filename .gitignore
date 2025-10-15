@@ -10,6 +10,10 @@ build/
 dist/
 coverage.out
 
+# Binaries
+main
+pokedexcli
+
 # Dependency vendor dir (omit if you vendor)
 vendor/
 
