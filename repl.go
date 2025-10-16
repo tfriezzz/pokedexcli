@@ -7,7 +7,8 @@ import (
 
 	// "os"
 	"strings"
-	// pokeapi "github.com/tfriezzz/pokedexcli/internal/pokeapi"
+
+	pokeapi "github.com/tfriezzz/pokedexcli/internal/pokeapi"
 )
 
 type cliCommand struct {
@@ -16,9 +17,12 @@ type cliCommand struct {
 	callback    func(in io.Reader, out io.Writer, cfg *config) (done bool, err error)
 }
 
+type api interface{ Get(string) ([]byte, error) }
+
 type config struct {
-	Next     string  `json:"next"`
-	Previous *string `json:"previous"`
+	Next     string
+	Previous string
+	URL      string
 }
 
 var replCommands map[string]cliCommand
@@ -34,6 +38,11 @@ func init() {
 			name:        "help",
 			description: "Displays a help message",
 			callback:    commandHelp,
+		},
+		"map": {
+			name:        "map",
+			description: "Displays 20 location areas. Each subsequent call displays the next 20",
+			callback:    commandMap,
 		},
 	}
 }
@@ -80,6 +89,28 @@ func commandHelp(in io.Reader, out io.Writer, cfg *config) (bool, error) {
 	for _, cmd := range replCommands {
 		fmt.Fprintf(out, "%s: %s\n", cmd.name, cmd.description)
 	}
+
+	return false, nil
+}
+
+func val(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
+func commandMap(in io.Reader, out io.Writer, cfg *config) (bool, error) {
+	resp, err := pokeapi.FetchLocationAreas(in, out, cfg.Next)
+	if err != nil {
+		return false, err
+	}
+	results := resp.Results
+	for _, r := range results {
+		fmt.Fprintf(out, "%v\n", r.Name)
+	}
+	cfg.Next = val(resp.Next)
+	cfg.Previous = val(resp.Previous)
 
 	return false, nil
 }

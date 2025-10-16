@@ -6,6 +6,8 @@ import (
 	"testing"
 )
 
+// Command test suite
+
 func TestRunREPL(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -59,5 +61,40 @@ func TestRunREPL(t *testing.T) {
 			runREPL(in, &out, replCommands, cfg)
 			tc.assert(t, out.String())
 		})
+	}
+}
+
+// API-related commands
+
+type fakeAPI struct {
+	calls []string
+	body  []byte
+	err   error
+}
+
+func (f *fakeAPI) Get(url string) ([]byte, error) {
+	f.calls = append(f.calls, url)
+	return f.body, f.err
+}
+
+func TestMap_FirstPage(t *testing.T) {
+	page1 := []byte(`{"count":1234,"next":"https://pokeapi.co/api/v2/location-area?offset=2&limit=2","previous":null,"results":[{"name":"canalave-city-area","url":"x"},{"name":"eterna-city-area","url":"y"}]}`)
+	f := &fakeAPI{body: page1}
+
+	in := strings.NewReader("map\nexit\n")
+	var out bytes.Buffer
+	cfg := &config{API: f}
+
+	runREPL(in, &out, replCommands, cfg)
+
+	got := out.String()
+	if !strings.Contains(got, "canalave-city-area") || !strings.Contains(got, "eterna-city-area") {
+		t.Fatalf("expected names in output, got: \n%s", got)
+	}
+	if cfg.Next == "" {
+		t.Fatal("Next not updated")
+	}
+	if cfg.Previous != nil {
+		t.Fatal("Previous should be nil on first page")
 	}
 }

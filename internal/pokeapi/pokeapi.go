@@ -2,41 +2,55 @@
 package pokeapi
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 
 	// "encoding/json"
 	"net/http"
 )
 
 type response struct {
-	Count    int     `json:"count"`
-	Next     string  `json:"next"`
-	Previous *string `json:"previous"`
-	Results  []struct {
-		Name string `json:"name"`
-		URL  string `json:"url"`
-	} `json:"results"`
+	Count    int       `json:"count"`
+	Next     *string   `json:"next"`
+	Previous *string   `json:"previous"`
+	Results  []Results `json:"results"`
+}
+type Results struct {
+	Name string `json:"name"`
+	URL  string `json:"url"`
 }
 
 func RunArea() {
-	FetchLocationAreas()
+	// FetchLocationAreas()
 }
 
-func FetchLocationAreas() {
-	res, err := http.Get("https://pokeapi.co/api/v2/location-area/")
-	if err != nil {
-		log.Fatal(err)
+func FetchLocationAreas(in io.Reader, out io.Writer, url string) (response, error) {
+	api := "https://pokeapi.co/api/v2/location-area"
+	if url == "" {
+		url = api
 	}
+	res, err := http.Get(url)
+	if err != nil {
+		fmt.Fprintf(out, "error creating request: %v", err)
+		return response{}, fmt.Errorf("error creating request: %w", err)
+	}
+	defer res.Body.Close()
 
 	body, err := io.ReadAll(res.Body)
-	defer res.Body.Close()
-	if res.StatusCode > 299 {
-		log.Fatalf("Response failed with status code: %d and\nbody: %s\n", res.StatusCode, body)
-	}
 	if err != nil {
-		log.Fatal(err)
+		fmt.Fprintf(out, "response failed: %v", err)
+		return response{}, fmt.Errorf("response failed: %w", err)
 	}
-	fmt.Printf("%s", body)
+	if res.StatusCode < 200 || res.StatusCode > 299 {
+		fmt.Fprintf(out, "response failed with status code: %d and\nbody: %s", res.StatusCode, body)
+		return response{}, fmt.Errorf("response failed with status code: %d and\nbody: %s", res.StatusCode, body)
+	}
+
+	var resp response
+	if err := json.Unmarshal(body, &resp); err != nil {
+		fmt.Fprintf(out, "unmarshal failed: %v", err)
+		return response{}, fmt.Errorf("unmarshal failed: %w", err)
+	}
+	return resp, nil
 }
