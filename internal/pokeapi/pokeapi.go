@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-
-	// "encoding/json"
 	"net/http"
 )
 
@@ -21,35 +19,29 @@ type Results struct {
 	URL  string `json:"url"`
 }
 
-func RunArea() {
-	// FetchLocationAreas()
+type HTTPAPI struct{}
+
+func (HTTPAPI) Get(u string) ([]byte, error) {
+	resp, err := http.Get(u)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	return io.ReadAll(resp.Body)
 }
 
-func FetchLocationAreas(in io.Reader, out io.Writer, url string) (response, error) {
-	api := "https://pokeapi.co/api/v2/location-area"
+func FetchLocationAreas(get func(string) ([]byte, error), url string) (response, error) {
 	if url == "" {
-		url = api
+		url = "https://pokeapi.co/api/v2/location-area"
 	}
-	res, err := http.Get(url)
-	if err != nil {
-		fmt.Fprintf(out, "error creating request: %v", err)
-		return response{}, fmt.Errorf("error creating request: %w", err)
-	}
-	defer res.Body.Close()
 
-	body, err := io.ReadAll(res.Body)
+	body, err := get(url)
 	if err != nil {
-		fmt.Fprintf(out, "response failed: %v", err)
-		return response{}, fmt.Errorf("response failed: %w", err)
-	}
-	if res.StatusCode < 200 || res.StatusCode > 299 {
-		fmt.Fprintf(out, "response failed with status code: %d and\nbody: %s", res.StatusCode, body)
-		return response{}, fmt.Errorf("response failed with status code: %d and\nbody: %s", res.StatusCode, body)
+		return response{}, fmt.Errorf("request failed: %w", err)
 	}
 
 	var resp response
 	if err := json.Unmarshal(body, &resp); err != nil {
-		fmt.Fprintf(out, "unmarshal failed: %v", err)
 		return response{}, fmt.Errorf("unmarshal failed: %w", err)
 	}
 	return resp, nil

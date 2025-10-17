@@ -4,11 +4,9 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-
-	// "os"
 	"strings"
 
-	pokeapi "github.com/tfriezzz/pokedexcli/internal/pokeapi"
+	"github.com/tfriezzz/pokedexcli/internal/pokeapi"
 )
 
 type cliCommand struct {
@@ -22,7 +20,7 @@ type api interface{ Get(string) ([]byte, error) }
 type config struct {
 	Next     string
 	Previous string
-	URL      string
+	API      api
 }
 
 var replCommands map[string]cliCommand
@@ -41,8 +39,13 @@ func init() {
 		},
 		"map": {
 			name:        "map",
-			description: "Displays 20 location areas. Each subsequent call displays the next 20",
+			description: "Displays 20 location areas. (Each subsequent call displays the next 20)",
 			callback:    commandMap,
+		},
+		"mapb": {
+			name:        "mapb",
+			description: "Displays the Previous 20 location areas.",
+			callback:    commandMapb,
 		},
 	}
 }
@@ -101,12 +104,32 @@ func val(s *string) string {
 }
 
 func commandMap(in io.Reader, out io.Writer, cfg *config) (bool, error) {
-	resp, err := pokeapi.FetchLocationAreas(in, out, cfg.Next)
+	resp, err := pokeapi.FetchLocationAreas(cfg.API.Get, cfg.Next)
 	if err != nil {
 		return false, err
 	}
-	results := resp.Results
-	for _, r := range results {
+	for _, r := range resp.Results {
+		fmt.Fprintf(out, "%v\n", r.Name)
+	}
+	cfg.Next = val(resp.Next)
+	cfg.Previous = val(resp.Previous)
+
+	return false, nil
+}
+
+func commandMapb(in io.Reader, out io.Writer, cfg *config) (bool, error) {
+	if cfg.Previous == "" {
+		fmt.Fprintln(out, "you're on the first page")
+		return false, nil
+	}
+
+	resp, err := pokeapi.FetchLocationAreas(cfg.API.Get, cfg.Previous)
+	if err != nil {
+		return false, err
+	}
+	fmt.Fprintln(out, "you're on the first page")
+
+	for _, r := range resp.Results {
 		fmt.Fprintf(out, "%v\n", r.Name)
 	}
 	cfg.Next = val(resp.Next)

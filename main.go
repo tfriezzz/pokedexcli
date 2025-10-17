@@ -1,12 +1,15 @@
 package main
 
 import (
-	// pokeapi "github.com/tfriezzz/pokedexcli/internal/pokeapi"
 	"os"
+
+	"github.com/tfriezzz/pokedexcli/internal/pokeapi"
 )
 
 func main() {
-	cfg := &config{}
+	cfg := &config{
+		API: pokeapi.HTTPAPI{},
+	}
 	runREPL(os.Stdin, os.Stdout, replCommands, cfg)
 	// pokeapi.RunArea()
 }
