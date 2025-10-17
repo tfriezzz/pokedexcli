@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+
+	"github.com/tfriezzz/pokedexcli/internal/pokecache"
 )
 
 type response struct {
@@ -19,15 +21,29 @@ type Results struct {
 	URL  string `json:"url"`
 }
 
-type HTTPAPI struct{}
+type HTTPAPI struct {
+	Cache *pokecache.Cache
+}
 
-func (HTTPAPI) Get(u string) ([]byte, error) {
+func (a *HTTPAPI) Get(u string) ([]byte, error) {
+	if a.Cache != nil {
+		if val, ok := a.Cache.Get(u); ok {
+			return val, nil
+		}
+	}
 	resp, err := http.Get(u)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	return io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	if a.Cache != nil {
+		a.Cache.Add(u, body)
+	}
+	return body, nil
 }
 
 func FetchLocationAreas(get func(string) ([]byte, error), url string) (response, error) {
