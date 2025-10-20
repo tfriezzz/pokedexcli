@@ -21,6 +21,7 @@ type config struct {
 	Next     string
 	Previous string
 	API      api
+	Location string
 }
 
 var replCommands map[string]cliCommand
@@ -47,6 +48,11 @@ func init() {
 			description: "Displays the Previous 20 location areas.",
 			callback:    commandMapb,
 		},
+		"explore": {
+			name:        "explore",
+			description: "'explore <area_name>' lists all the Pokemon in the area",
+			callback:    commandExplore,
+		},
 	}
 }
 
@@ -68,6 +74,9 @@ func runREPL(in io.Reader, out io.Writer, cmds map[string]cliCommand, cfg *confi
 			fmt.Fprintln(out, "Unknown command")
 			continue
 		}
+		if len(fields) >= 2 {
+			cfg.Location = fields[1]
+		}
 		done, err := cmd.callback(in, out, cfg)
 		if err != nil {
 			fmt.Fprint(out, "error:", err)
@@ -85,13 +94,14 @@ func commandExit(in io.Reader, out io.Writer, cfg *config) (bool, error) {
 }
 
 func commandHelp(in io.Reader, out io.Writer, cfg *config) (bool, error) {
-	fmt.Fprintln(out, "Welcome to the Pokedex!")
+	fmt.Fprintln(out, "\nWelcome to the Pokedex!")
 	fmt.Fprint(out, `Usage:
 
 `)
 	for _, cmd := range replCommands {
 		fmt.Fprintf(out, "%s: %s\n", cmd.name, cmd.description)
 	}
+	fmt.Fprint(out, "\n")
 
 	return false, nil
 }
@@ -134,6 +144,19 @@ func commandMapb(in io.Reader, out io.Writer, cfg *config) (bool, error) {
 	}
 	cfg.Next = val(resp.Next)
 	cfg.Previous = val(resp.Previous)
+
+	return false, nil
+}
+
+func commandExplore(in io.Reader, out io.Writer, cfg *config) (bool, error) {
+	resp, err := pokeapi.FetchEncounters(cfg.API.Get, cfg.Location)
+	if err != nil {
+		return false, err
+	}
+
+	for _, encounter := range resp.PokemonEncounters {
+		fmt.Fprintf(out, "%v\n", encounter.Pokemon.Name)
+	}
 
 	return false, nil
 }

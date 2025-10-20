@@ -25,6 +25,19 @@ type HTTPAPI struct {
 	Cache *pokecache.Cache
 }
 
+type nameCall struct {
+	// Location             Location               `json:"location"`
+	PokemonEncounters []PokemonEncounters `json:"pokemon_encounters"`
+}
+
+type PokemonEncounters struct {
+	Pokemon PokemonInfo `json:"pokemon"`
+}
+type PokemonInfo struct {
+	Name string `json:"name"`
+	URL  string `json:"url"`
+}
+
 func (a *HTTPAPI) Get(u string) ([]byte, error) {
 	if a.Cache != nil {
 		if val, ok := a.Cache.Get(u); ok {
@@ -59,6 +72,21 @@ func FetchLocationAreas(get func(string) ([]byte, error), url string) (response,
 	var resp response
 	if err := json.Unmarshal(body, &resp); err != nil {
 		return response{}, fmt.Errorf("unmarshal failed: %w", err)
+	}
+	return resp, nil
+}
+
+func FetchEncounters(get func(string) ([]byte, error), location string) (nameCall, error) {
+	baseURL := "https://pokeapi.co/api/v2/location-area/"
+	exploreLocation := fmt.Sprintf("%s%s", baseURL, location)
+	// fmt.Printf("test_location: %s", exploreLocation)
+	body, err := get(exploreLocation)
+	if err != nil {
+		return nameCall{}, fmt.Errorf("request failed %w", err)
+	}
+	var resp nameCall
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return nameCall{}, fmt.Errorf("unmarshal failed: %w", err)
 	}
 	return resp, nil
 }
