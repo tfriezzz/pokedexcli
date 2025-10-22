@@ -10,6 +10,13 @@ import (
 	"github.com/tfriezzz/pokedexcli/internal/pokecache"
 )
 
+var Pokedex map[string]pokeCall
+
+type pokeCall struct {
+	BaseExperience int    `json:"base_experience"`
+	Name           string `json:"name"`
+}
+
 type response struct {
 	Count    int       `json:"count"`
 	Next     *string   `json:"next"`
@@ -22,11 +29,11 @@ type Results struct {
 }
 
 type HTTPAPI struct {
-	Cache *pokecache.Cache
+	Cache   *pokecache.Cache
+	Pokedex map[string]pokeCall
 }
 
 type nameCall struct {
-	// Location             Location               `json:"location"`
 	PokemonEncounters []PokemonEncounters `json:"pokemon_encounters"`
 }
 
@@ -89,4 +96,18 @@ func FetchEncounters(get func(string) ([]byte, error), location string) (nameCal
 		return nameCall{}, fmt.Errorf("unmarshal failed: %w", err)
 	}
 	return resp, nil
+}
+
+func FetchPokemon(get func(string) ([]byte, error), pokemon string) (pokeCall, error) {
+	baseURL := "https://pokeapi.co/api/v2/pokemon/"
+	pokemonURL := baseURL + pokemon
+	body, err := get(pokemonURL)
+	if err != nil {
+		return pokeCall{}, err
+	}
+	var resp pokeCall
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return pokeCall{}, fmt.Errorf("unmarshal failed: %w", err)
+	}
+	return resp, err
 }

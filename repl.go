@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"math"
+	"math/rand"
 	"strings"
 
 	"github.com/tfriezzz/pokedexcli/internal/pokeapi"
@@ -18,10 +20,10 @@ type cliCommand struct {
 type api interface{ Get(string) ([]byte, error) }
 
 type config struct {
-	Next     string
-	Previous string
-	API      api
-	Location string
+	Next           string
+	Previous       string
+	API            api
+	secondArgument string
 }
 
 var replCommands map[string]cliCommand
@@ -53,6 +55,11 @@ func init() {
 			description: "'explore <area_name>' lists all the Pokemon in the area",
 			callback:    commandExplore,
 		},
+		"catch": {
+			name:        "catch",
+			description: "'catch <pokemon_name>' attempts to catch the pokemon",
+			callback:    commandCatch,
+		},
 	}
 }
 
@@ -75,7 +82,7 @@ func runREPL(in io.Reader, out io.Writer, cmds map[string]cliCommand, cfg *confi
 			continue
 		}
 		if len(fields) >= 2 {
-			cfg.Location = fields[1]
+			cfg.secondArgument = fields[1]
 		}
 		done, err := cmd.callback(in, out, cfg)
 		if err != nil {
@@ -149,7 +156,7 @@ func commandMapb(in io.Reader, out io.Writer, cfg *config) (bool, error) {
 }
 
 func commandExplore(in io.Reader, out io.Writer, cfg *config) (bool, error) {
-	resp, err := pokeapi.FetchEncounters(cfg.API.Get, cfg.Location)
+	resp, err := pokeapi.FetchEncounters(cfg.API.Get, cfg.secondArgument)
 	if err != nil {
 		return false, err
 	}
@@ -158,5 +165,30 @@ func commandExplore(in io.Reader, out io.Writer, cfg *config) (bool, error) {
 		fmt.Fprintf(out, "%v\n", encounter.Pokemon.Name)
 	}
 
+	return false, nil
+}
+
+func commandCatch(in io.Reader, out io.Writer, cfg *config) (bool, error) {
+	resp, err := pokeapi.FetchPokemon(cfg.API.Get, cfg.secondArgument)
+	if err != nil {
+		return false, err
+	}
+	didCatch := func() bool {
+		baseChance := 90.0
+		difficulty := 0.2 * float64(resp.BaseExperience)
+		maxDifficulty := 95.0
+		catchChance := baseChance - difficulty
+		result := int(math.Min(catchChance, maxDifficulty))
+
+		return rand.Intn(100) < result
+	}
+	fmt.Printf("test: %v", resp.BaseExperience)
+	fmt.Fprintf(out, "Throwing a Pokeball at %s...\n", resp.Name)
+	if !didCatch() {
+		fmt.Fprintf(out, "%s escaped!\n", resp.Name)
+	}
+	if didCatch() {
+		fmt.Fprintf(out, "%s was caught!\n", resp.Name)
+	}
 	return false, nil
 }

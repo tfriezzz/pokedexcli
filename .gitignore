@@ -17,6 +17,8 @@ pokedexcli
 # Dependency vendor dir (omit if you vendor)
 vendor/
 
+structs/
+
 # Neovim/Vim
 *.swp
 *.swo
