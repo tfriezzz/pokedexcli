@@ -65,8 +65,13 @@ func init() {
 		},
 		"inspect": {
 			name:        "inspect",
-			description: "'inspect <pokemon_name>' inspect the Pokemon in you Pokedex",
+			description: "'inspect <pokemon_name>' inspect the selected Pokemon in you Pokedex",
 			callback:    commandInspect,
+		},
+		"pokedex": {
+			name:        "pokedex",
+			description: "lists all the Pokemon in you Pokedex",
+			callback:    commandPokedex,
 		},
 	}
 }
@@ -197,6 +202,7 @@ func commandCatch(in io.Reader, out io.Writer, cfg *config) (bool, error) {
 	}
 	cfg.API.AddToPokedex(resp)
 	fmt.Fprintf(out, "%s was caught!\n", resp.Name)
+	fmt.Fprint(out, "You may now inspect it with the inspect command\n.")
 	return false, nil
 }
 
@@ -217,6 +223,19 @@ func commandInspect(in io.Reader, out io.Writer, cfg *config) (bool, error) {
 	fmt.Fprint(out, "Types:\n")
 	for _, t := range pokemon.Types {
 		fmt.Fprintf(out, " -%s\n", t.Type.Name)
+	}
+	return false, nil
+}
+
+func commandPokedex(in io.Reader, out io.Writer, cfg *config) (bool, error) {
+	pokemonList := cfg.API.Pokedex
+	if len(pokemonList) == 0 {
+		fmt.Fprint(out, "Try to catch some Pokemon first\n")
+		return false, nil
+	}
+	fmt.Fprint(out, "Your Pokedex:\n")
+	for p := range pokemonList {
+		fmt.Fprintf(out, "%s\n", p)
 	}
 	return false, nil
 }
