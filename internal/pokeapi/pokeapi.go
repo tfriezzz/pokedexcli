@@ -10,11 +10,36 @@ import (
 	"github.com/tfriezzz/pokedexcli/internal/pokecache"
 )
 
-var Pokedex map[string]pokeCall
+var Pokedex map[string]Pokemon
 
-type pokeCall struct {
-	BaseExperience int    `json:"base_experience"`
-	Name           string `json:"name"`
+type Pokemon struct {
+	BaseExperience int     `json:"base_experience"`
+	Name           string  `json:"name"`
+	Height         int     `json:"height"`
+	Weight         int     `json:"weight"`
+	Stats          []Stats `json:"stats"`
+	Types          []Types `json:"types"`
+}
+
+type Stat struct {
+	Name string `json:"name"`
+	URL  string `json:"url"`
+}
+
+type Stats struct {
+	BaseStat int  `json:"base_stat"`
+	Effort   int  `json:"effort"`
+	Stat     Stat `json:"stat"`
+}
+
+type Type struct {
+	Name string `json:"name"`
+	URL  string `json:"url"`
+}
+
+type Types struct {
+	Slot int  `json:"slot"`
+	Type Type `json:"type"`
 }
 
 type response struct {
@@ -30,7 +55,7 @@ type Results struct {
 
 type HTTPAPI struct {
 	Cache   *pokecache.Cache
-	Pokedex map[string]pokeCall
+	Pokedex map[string]Pokemon
 }
 
 type nameCall struct {
@@ -66,6 +91,13 @@ func (a *HTTPAPI) Get(u string) ([]byte, error) {
 	return body, nil
 }
 
+func (a *HTTPAPI) AddToPokedex(p Pokemon) {
+	if a.Pokedex == nil {
+		a.Pokedex = make(map[string]Pokemon)
+	}
+	a.Pokedex[p.Name] = p
+}
+
 func FetchLocationAreas(get func(string) ([]byte, error), url string) (response, error) {
 	if url == "" {
 		url = "https://pokeapi.co/api/v2/location-area"
@@ -98,16 +130,16 @@ func FetchEncounters(get func(string) ([]byte, error), location string) (nameCal
 	return resp, nil
 }
 
-func FetchPokemon(get func(string) ([]byte, error), pokemon string) (pokeCall, error) {
+func FetchPokemon(get func(string) ([]byte, error), pokemon string) (Pokemon, error) {
 	baseURL := "https://pokeapi.co/api/v2/pokemon/"
 	pokemonURL := baseURL + pokemon
 	body, err := get(pokemonURL)
 	if err != nil {
-		return pokeCall{}, err
+		return Pokemon{}, err
 	}
-	var resp pokeCall
+	var resp Pokemon
 	if err := json.Unmarshal(body, &resp); err != nil {
-		return pokeCall{}, fmt.Errorf("unmarshal failed: %w", err)
+		return Pokemon{}, fmt.Errorf("unmarshal failed: %w", err)
 	}
 	return resp, err
 }

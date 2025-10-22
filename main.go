@@ -10,13 +10,11 @@ import (
 
 func main() {
 	cache := pokecache.NewCache(5 * time.Second)
-	// pokedex := pokeapi.NewPokedex()
 	cfg := &config{
 		API: &pokeapi.HTTPAPI{
-			Cache: cache,
-			// Pokedex: pokedex,
+			Cache:   cache,
+			Pokedex: make(map[string]pokeapi.Pokemon),
 		},
 	}
 	runREPL(os.Stdin, os.Stdout, replCommands, cfg)
-	// pokeapi.RunArea()
 }

@@ -17,12 +17,15 @@ type cliCommand struct {
 	callback    func(in io.Reader, out io.Writer, cfg *config) (done bool, err error)
 }
 
-type api interface{ Get(string) ([]byte, error) }
+type api interface {
+	Get(string) ([]byte, error)
+	AddToPokedex(pokeapi.Pokemon)
+}
 
 type config struct {
 	Next           string
 	Previous       string
-	API            api
+	API            *pokeapi.HTTPAPI
 	secondArgument string
 }
 
@@ -57,8 +60,13 @@ func init() {
 		},
 		"catch": {
 			name:        "catch",
-			description: "'catch <pokemon_name>' attempts to catch the pokemon",
+			description: "'catch <pokemon_name>' attempts to catch the Pokemon",
 			callback:    commandCatch,
+		},
+		"inspect": {
+			name:        "inspect",
+			description: "'inspect <pokemon_name>' inspect the Pokemon in you Pokedex",
+			callback:    commandInspect,
 		},
 	}
 }
@@ -182,13 +190,33 @@ func commandCatch(in io.Reader, out io.Writer, cfg *config) (bool, error) {
 
 		return rand.Intn(100) < result
 	}
-	fmt.Printf("test: %v", resp.BaseExperience)
 	fmt.Fprintf(out, "Throwing a Pokeball at %s...\n", resp.Name)
 	if !didCatch() {
 		fmt.Fprintf(out, "%s escaped!\n", resp.Name)
+		return false, nil
 	}
-	if didCatch() {
-		fmt.Fprintf(out, "%s was caught!\n", resp.Name)
+	cfg.API.AddToPokedex(resp)
+	fmt.Fprintf(out, "%s was caught!\n", resp.Name)
+	return false, nil
+}
+
+func commandInspect(in io.Reader, out io.Writer, cfg *config) (bool, error) {
+	// pokemon := cfg.API.Pokedex[cfg.secondArgument]
+	pokemon, ok := cfg.API.Pokedex[cfg.secondArgument]
+	if !ok {
+		fmt.Fprint(out, "you have not caught that pokemon\n")
+		return false, nil
+	}
+	fmt.Fprintf(out, "Name: %s\n", pokemon.Name)
+	fmt.Fprintf(out, "Height: %d\n", pokemon.Height)
+	fmt.Fprintf(out, "Weight: %d\n", pokemon.Weight)
+	fmt.Fprint(out, "Stats:\n")
+	for _, stat := range pokemon.Stats {
+		fmt.Fprintf(out, " -%s: %d\n", stat.Stat.Name, stat.BaseStat)
+	}
+	fmt.Fprint(out, "Types:\n")
+	for _, t := range pokemon.Types {
+		fmt.Fprintf(out, " -%s\n", t.Type.Name)
 	}
 	return false, nil
 }
